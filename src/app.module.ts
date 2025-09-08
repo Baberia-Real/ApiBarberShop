@@ -23,8 +23,8 @@ import { CategoriesModule } from './categories/categories.module';
       password: process.env.PGPASSWORD,
       database: process.env.PGDATABASE,
       entities: [__dirname + '/**/*.entity{.ts,.js}'],
-      autoLoadEntities: true,
-      synchronize: true,
+     // autoLoadEntities: true,
+    //  synchronize: true,
       ssl: true,
       extra: {
         ssl: {

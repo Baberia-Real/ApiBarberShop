@@ -14,8 +14,6 @@ export class Variation {
 
   @Column({ type: 'varchar', length: 50 })
   color: string;
-
-
   @ManyToOne(() => Product, (product) => product.variations, {
     onDelete: 'CASCADE',
   })

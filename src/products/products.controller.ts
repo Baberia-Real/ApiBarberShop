@@ -56,24 +56,24 @@ export class ProductsController {
     return this.productsService.findOne(+id);
   }
 
-  // @Patch(':id')
-  // @UseInterceptors(FileInterceptor('image'))
-  // async update(
-  //   @Param('id') id: string,
-  //   @Body() updateProductDto: UpdateProductDto,
-  //   @UploadedFile(
-  //     new ParseFilePipe({
-  //       validators: [
-  //         new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }), // 5MB
-  //         new FileTypeValidator({ fileType: 'image/*' }),
-  //       ],
-  //       fileIsRequired: false,
-  //     }),
-  //   )
-  //   file?: Express.Multer.File,
-  // ) {
-  //   return this.productsService.update(+id, updateProductDto, file);
-  // }
+  @Patch(':id')
+  @UseInterceptors(FileInterceptor('image'))
+  async update(
+    @Param('id') id: string,
+    @Body() updateProductDto: UpdateProductDto,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }), // 5MB
+          new FileTypeValidator({ fileType: 'image/*' }),
+        ],
+        fileIsRequired: false,
+      }),
+    )
+    file?: Express.Multer.File,
+  ) {
+    return this.productsService.update(+id, updateProductDto, file);
+  }
 
   @Delete(':id')
   remove(@Param('id') id: string) {

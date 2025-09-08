@@ -145,109 +145,106 @@ export class ProductsService {
     return product;
   }
 
-  // async update(id: number, updateProductDto: UpdateProductDto, file?: Express.Multer.File): Promise<Product> {
-  //   const queryRunner = this.productRepository.manager.connection.createQueryRunner();
-  //   await queryRunner.connect();
-  //   await queryRunner.startTransaction();
+  async update(id: number, updateProductDto: UpdateProductDto, file?: Express.Multer.File): Promise<Product> {
+    const queryRunner = this.productRepository.manager.connection.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-  //   try {
-  //     const product = await this.findOne(id);
+    try {
+      const product = await this.findOne(id);
       
-  //     // Verificar si se está actualizando el nombre
-  //     if (updateProductDto.name && updateProductDto.name !== product.name) {
-  //       const existingProduct = await queryRunner.manager.findOne(Product, {
-  //         where: { name: updateProductDto.name },
-  //       });
+      // Verificar si se está actualizando el nombre
+      if (updateProductDto.name && updateProductDto.name !== product.name) {
+        const existingProduct = await queryRunner.manager.findOne(Product, {
+          where: { name: updateProductDto.name },
+        });
         
-  //       if (existingProduct && existingProduct.id !== id) {
-  //         throw new ConflictException('Ya existe otro producto con este nombre');
-  //       }
-  //     }
+        if (existingProduct && existingProduct.id !== id) {
+          throw new ConflictException('Ya existe otro producto con este nombre');
+        }
+      }
 
-  //     // Procesar imagen principal si se proporciona
-  //     if (file) {
-  //       // Eliminar la imagen principal anterior si existe
-  //       const mainImage = await queryRunner.manager.findOne(Image, {
-  //         where: { product: { id }, isMain: true }
-  //       });
+      // Procesar imagen principal si se proporciona
+      if (file) {
+        // Eliminar la imagen principal anterior si existe
+        const mainImage = await queryRunner.manager.findOne(Image, {
+          where: { product: { id }, isMain: true }
+        });
 
-  //       if (mainImage && mainImage.cloudinaryPublicId) {
-  //         try {
-  //           await this.cloudinaryService.deleteImage(mainImage.cloudinaryPublicId);
-  //         } catch (error) {
-  //           console.error('Error al eliminar la imagen anterior de Cloudinary:', error);
-  //         }
-  //         await queryRunner.manager.remove(Image, mainImage);
-  //       }
+        if (mainImage && mainImage.cloudinaryPublicId) {
+          try {
+            await this.cloudinaryService.deleteImage(mainImage.cloudinaryPublicId);
+          } catch (error) {
+            console.error('Error al eliminar la imagen anterior de Cloudinary:', error);
+          }
+          await queryRunner.manager.remove(Image, mainImage);
+        }
 
-  //       // Subir la nueva imagen
-  //       const result = await this.cloudinaryService.uploadImage(file);
+        // Subir la nueva imagen
+        const result = await this.cloudinaryService.uploadImage(file);
         
-  //       // Crear nueva entrada de imagen principal
-  //       const newMainImage = this.imageRepository.create({
-  //         imageUrl: result.secure_url,
-  //         cloudinaryPublicId: result.public_id,
-  //         isMain: true,
-  //         displayOrder: 0,
-  //         product: { id }
-  //       });
+        // Crear nueva entrada de imagen principal
+        const newMainImage = this.imageRepository.create({
+          imageUrl: result.secure_url,
+          cloudinaryPublicId: result.public_id,
+          isMain: true,
+          displayOrder: 0,
+          product: { id }
+        });
         
-  //       await queryRunner.manager.save(Image, newMainImage);
-  //     }
+        await queryRunner.manager.save(Image, newMainImage);
+      }
 
-  //     // Actualizar campos básicos del producto
-  //     const { variations, images, ...productData } = updateProductDto;
-  //     await queryRunner.manager.update(Product, id, productData);
+      // Actualizar campos básicos del producto
+      const { color, size, ...productData } = updateProductDto;
+      await queryRunner.manager.update(Product, id, productData);
 
-  //     // Actualizar variaciones si se proporcionan
-  //     if (variations) {
-  //       // Eliminar variaciones existentes
-  //       await queryRunner.manager.delete(Variation, { product: { id } });
-        
-  //       // Crear nuevas variaciones
-  //       const variationsToSave = variations.map(variation => ({
-  //         ...variation,
-  //         product: { id }
-  //       }));
-        
-  //       if (variationsToSave.length > 0) {
-  //         await queryRunner.manager.save(Variation, variationsToSave);
-  //       }
-  //     }
+ 
 
-  //     // Actualizar imágenes adicionales si se proporcionan
-  //     if (images) {
-  //       // Eliminar imágenes adicionales existentes (excepto la principal)
-  //       await queryRunner.manager.delete(Image, { 
-  //         product: { id },
-  //         isMain: false
-  //       });
-        
-  //       // Crear nuevas imágenes adicionales
-  //       const additionalImages = images
-  //         .filter(img => !img.isMain)
-  //         .map((img, index) => ({
-  //           ...img,
-  //           displayOrder: img.displayOrder || index + 1,
-  //           product: { id }
-  //         }));
-        
-  //       if (additionalImages.length > 0) {
-  //         await queryRunner.manager.save(Image, additionalImages);
-  //       }
-  //     }
+     // Actualizar variaciones si se proporcionan
+      if (color !== undefined || size !== undefined) {
+        // 2. Buscamos si ya existe una variación para este producto
+        const existingVariation = await queryRunner.manager.findOne(Variation, {
+            where: { productId: id }
+        });
+    
+        // 3. Si existe, la actualizamos
+        if (existingVariation) {
+            if (color !== undefined) existingVariation.color = color;
+            if (size !== undefined) existingVariation.size = size;
+            await queryRunner.manager.save(Variation, existingVariation);
+        } 
+        // 4. Si no existe y se está proporcionando algún valor, creamos una nueva
+        else if (color || size) {
+            const newVariation = new Variation();
+            newVariation.productId = id;
+            if (color !== undefined) newVariation.color = color;
+            if (size !== undefined) newVariation.size = size;
+            
+            await queryRunner.manager.save(Variation, newVariation);
+        }
+    }
 
-  //     await queryRunner.commitTransaction();
-  //     return this.findOne(id);
+      // Actualizar imágenes adicionales si se proporcionan
+      if (file) {
+        // Eliminar imágenes adicionales existentes (excepto la principal)
+        await queryRunner.manager.delete(Image, { 
+          product: { id },
+          isMain: false
+        });
+      }
+
+      await queryRunner.commitTransaction();
+      return this.findOne(id);
       
-  //   } catch (error) {
-  //     await queryRunner.rollbackTransaction();
-  //     console.error('Error al actualizar el producto:', error);
-  //     throw new InternalServerErrorException('Error al actualizar el producto');
-  //   } finally {
-  //     await queryRunner.release();
-  //   }
-  // }
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      console.error('Error al actualizar el producto:', error);
+      throw new InternalServerErrorException('Error al actualizar el producto');
+    } finally {
+      await queryRunner.release();
+    }
+  }
 
   async remove(id: number): Promise<void> {
     const queryRunner = this.productRepository.manager.connection.createQueryRunner();
